@@ -1,108 +1,88 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages, auth
 from django.core.validators import validate_email
-from django.contrib.auth.models import User
+
 from django.contrib.auth.decorators import login_required
 from .models import FormContato
+from django.core.exceptions import ValidationError
+from .models import Contato
+from .forms import UserRegisterForm
+from django.views.generic import CreateView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from .models import Contato
+from django.contrib.auth.models import User
 
 
-# Create your views here.
-def login(request):
-    if request.method != 'POST':
-        return render(request, 'tmpl_accounts/login.html')
-
-    usuario = request.POST.get('usuario')
-    senha = request.POST.get('senha')
-
-    # checando usuario e senha
-    user = auth.authenticate(request, username=usuario, password=senha)
-
-    if not user:
-        messages.error(request, 'Usuário ou senha invalidos')
-        return render(request, 'tmpl_accounts/login.html')
-    else:
-        auth.login(request, user)
-        messages.success(request, 'Login sucedido')
-        return redirect('dashboard')  # evita erro de reload da pagina
-
-
-def logout(request):
-    auth.logout(request)
-    return redirect('dashboard')
-
+# REALIZANDO UM NOVO REGISTRO DE USUARIO NO SISTEMA
 
 def register(request):
-    if request.method != 'POST':
-        return render(request, 'tmpl_accounts/register.html')
+    if request.method == 'POST':
+        form = UserRegisterForm(request.POST, request.user)
 
-    nome = request.POST.get('nome')
-    sobrenome = request.POST.get('sobrenome')
-    email = request.POST.get('email')
-    usuario = request.POST.get('usuario')
-    senha = request.POST.get('senha')
-    senha2 = request.POST.get('senha2')
+        email = request.POST.get('email')
 
-    # Validando campo vazio
-    if not nome or not sobrenome or not email or not usuario or not senha or not senha2:
-        messages.info(request, 'Nenhum campo pode estar vazio.')
-        return render(request, 'tmpl_accounts/register.html')
+        if User.objects.filter(email=email).exists():
+            messages.error(request, 'Email ja existe')
+            form = UserRegisterForm(request.POST, request.user)
 
-    # Validando usuario
-    if len(usuario) < 6:
-        messages.error(request, 'O usuario precisa ter mais de seis caracteres')
-        return render(request, 'tmpl_accounts/register.html')
+        if form.is_valid():
+            form.save()
+            username = form.cleaned_data.get('username')
+            messages.success(request, f'Sua conta foi criada! Agora você pode se logar {username}!')
+            return redirect('login')
+    else:
+        form = UserRegisterForm()
+    return render(request, 'tmpl_accounts/register.html', {'form': form})
 
-    # Validando senha
-    if len(senha) < 2:
-        messages.error(request, 'A senha precisa ter mais de seis caracteres')
-        return render(request, 'tmpl_accounts/register.html')
 
-    # Validando confirmação da senha
-    if senha != senha2:
-        messages.error(request, 'Por favor digite ambas as senha corretamente')
-        return render(request, 'tmpl_accounts/register.html')
+# CRIANDO UM NOVO CONTATO
+class CriandoContato(LoginRequiredMixin, CreateView):
+    model = Contato
+    fields = ['nome', 'sobrenome', 'telefone', 'email', 'descricao', 'categoria', 'mostrar', 'foto']
+    template_name = 'tmpl_accounts/criar_contato.html'
+
+    # SALVANDO E REDIRECIONANDO PARA VER O CONTATO CRIADO
+    def form_valid(self, form):
+
+        # FAZENDO RELAÇÃO DO USUARIO LOGADO COM O NOVO CONTATO
+        form.instance.criador = self.request.user
+
+        if not form.is_valid():
+            messages.error('Erro ao enviar o formulário.')
+            return render(self.request, 'tmpl_accounts/criar_contato.html', {'form': form})
+
+        nome = self.request.POST.get('nome')
+        email = self.request.POST.get('email')
+        telefone = self.request.POST.get('telefone')
+
+        # ------------ VALIDAÇOES DE NOVOS CONTATOS ------------
+
+        # Validando campos vazios
+        if not nome or not email or not telefone:
+            messages.info(self.request, 'Nenhum campo pode estar vazio.')
+            return render(self.request, 'tmpl_accounts/criar_contato.html', {'form': form})
+
+        # Validando campos telefone
+        if len(telefone) != 11:
+            messages.error(self.request, 'Precisa ter 11 numeros')
+            return render(self.request, 'tmpl_accounts/criar_contato.html', {'form': form})
 
         # Validando email
-    try:
-        validate_email(email)
-    except:
-        messages.error(request, 'Email incorreto')
-        return render(request, 'tmpl_accounts/register.html')
+        try:
+            validate_email(email)
+            # Vertificando a existencia do mesmo email
+            if Contato.objects.filter(email=email).exists():
+                messages.error(self.request, 'Email ja existe')
+                return render(self.request, 'tmpl_accounts/criar_contato.html', {'form': form})
+        except ValidationError:
+            messages.error(self.request, 'Email incorreto')
+            return render(self.request, 'tmpl_accounts/criar_contato.html', {'form': form})
 
-    # Vertificando a existencia do mesmo email
-    if User.objects.filter(first_name=nome).exists():
-        messages.error(request, 'Usuario ja existe')
-        return render(request, 'tmpl_accounts/register.html')
+        # Vertificando a existencia do mesmo telefone
+        if Contato.objects.filter(telefone=telefone).exists():
+            messages.error(self.request, 'Telefone ja existe')
+            return render(self.request, 'tmpl_accounts/criar_contato.html', {'form': form})
 
-    # Vertificando a existencia do mesmo email
-    if User.objects.filter(email=email).exists():
-        messages.error(request, 'Email ja existe')
-        return render(request, 'tmpl_accounts/register.html')
-
-    messages.success(request, 'Cadastrado! Aproveite a experiencia !')
-    user = User.objects.create_user(first_name=nome, last_name=sobrenome, email=email, username=usuario, password=senha)
-    user.save()
-    return redirect('login')
-
-
-@login_required(redirect_field_name='login')  # só deixa acessar essa pagina se o login estiver efetuado
-def dashboard(request):
-    if request.method != 'POST':
-        form = FormContato()
-        return render(request, 'tmpl_accounts/dashboard.html', {'form': form})
-
-    form = FormContato(request.POST, request.FILES)
-    if not form.is_valid():
-        messages.error('Erro ao enviar o formulário.')
-        form = FormContato(request.POST)
-        return render(request, 'tmpl_accounts/dashboard.html', {'form': form})
-
-    descricao = request.POST.get('descricao')
-    if len(descricao) < 5:
-        messages.error(request, 'Descrição precisa ter mais de 5 caracteres')
-        form = FormContato(request.POST)
-        return render(request, 'tmpl_accounts/dashboard.html', {'form': form})
-
-    form.save()
-    messages.success(request, f'Contato {request.POST.get("nome")} salvo com sucesso!')
-    return redirect('dashboard')
+        messages.success(self.request, f'Contato {self.request.POST.get("nome")} salvo com sucesso!')
+        form.save()
+        return super().form_valid(form)

@@ -3,8 +3,7 @@ from contatos.models import Contato
 from django import forms
 
 
-# Create your models here.
-
+# PEGANGO O MODELS CRIADO EM CONTATOS E UTILIZANDO EM ACCOUNTS
 class FormContato(forms.ModelForm):
     class Meta:
         model = Contato

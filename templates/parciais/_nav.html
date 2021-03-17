@@ -1,42 +1,36 @@
-<!-- Navigation
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark static-top">
-    <div class="container">
-        <a class="navbar-brand" href="{% url 'index' %}">Agenda</a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarResponsive"
-                aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-    </div>
-</nav>
--->
-
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <a class="navbar-brand" href="{% url 'index' %}">Agenda </a>
-    <button class="navbar-toggler x" type="button" data-toggle="collapse" data-target="#navbarsExample05"
-            aria-controls="navbarsExample05" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-    </button>
-
-    <div class="collapse navbar-collapse" id="navbarsExample05">
-        <ul class="navbar-nav mr-auto">
-            <li class="nav-item active">
-                <a class="nav-link" href="{% url 'index' %}">Pagina inicial<span class="sr-only">(current)</span></a>
-            </li>
-            <li class="nav-item active">
-                <a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>
-            </li>
-        </ul>
-        <ul class="navbar-nav nav navbar-nav ml-auto">
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" id="dropdown05" data-toggle="dropdown" aria-haspopup="true"
-                   aria-expanded="false">Sessão</a>
-                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdown05">
-                    <a class="dropdown-item" href="{% url 'login' %}">Entrar</a>
-                    <a class="dropdown-item" href="{% url 'logout' %}">Sair</a>
-                    <a class="dropdown-item" href="{% url 'register' %}">Registrar</a>
+<nav class="navbar navbar-expand-md navbar-dark bg-steel fixed-top">
+        <div class="container">
+            {% if user.is_authenticated %}
+            <a class="navbar-brand mr-4" href="{% url 'index' %}">Agenda {{user.username.title}}</a>
+            {% else %}
+            <a class="navbar-brand mr-4" href="{% url 'index' %}">Sua Agenda</a>
+            {% endif %}
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarToggle"
+                    aria-controls="navbarToggle" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarToggle">
+                <div class="navbar-nav mr-auto">
+                    {% if user.is_authenticated %}
+                    <a class="nav-item nav-link" href="{% url 'usuario-contato' user.username %}">Meus Contatos</a>
+                    <a class="nav-item nav-link" href="{% url 'dashboard' %}">Novo Contato</a>
+                    {% else%}
+                    <a class="nav-item nav-link" href="{% url 'index' %}">Pagina Inicial</a>
+                    {% endif %}
                 </div>
-            </li>
-        </ul>
+                <!-- Navbar Right Side -->
+                <div class="navbar-nav">
+                    {% if user.is_authenticated %}
 
-    </div>
-</nav>
+                        <a class="nav-item nav-link" href="{% url 'usuario-contato' user.username  %}">{{user.username.title}}</a>
+
+                        <a class="nav-item nav-link" href="{% url 'logout' %}">Sair</a>
+                    {% else %}
+                        <a class="nav-item nav-link" href="{% url 'login' %}">Login</a>
+                        <a class="nav-item nav-link" href="{% url 'register' %}">Cadastrar</a>
+                    {% endif %}
+
+                </div>
+            </div>
+        </div>
+    </nav>
